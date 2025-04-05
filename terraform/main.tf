@@ -8,15 +8,15 @@ resource "azurerm_resource_group" "rg" {
   location = var.location
 }
 
-resource "azurerm_app_service_plan" "plan" {
+resource "azurerm_service_plan" "plan" {
   name                = "appservice-plan"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  sku {
-    tier = "Free"
-    size = "F1"
+  location            = "eastus"
+  resource_group_name = "react-rg"
+  os_type             = "Windows"
+  sku_name            = "F1"
+
   }
-}
+
 
 resource "azurerm_app_service" "app" {
   name                = var.app_service_name
