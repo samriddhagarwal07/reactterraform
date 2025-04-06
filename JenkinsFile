@@ -21,13 +21,18 @@ pipeline {
             }
         }
 
-        stage('Terraform Import Existing Resources') {
-            steps {
-                bat '''
-                    C:\\Users\\Samriddh\\Downloads\\terraform_1.11.3_windows_386\\terraform.exe -chdir=terraform import azurerm_resource_group.rg "/subscriptions/4a6f3be4-14cd-451b-97b0-d315131d91cd/resourceGroups/react-rg"
-                '''
-            }
-        }
+        stage('Terraform Conditional Import') {
+    steps {
+        bat '''
+            C:\\Users\\Samriddh\\Downloads\\terraform_1.11.3_windows_386\\terraform.exe -chdir=terraform state list > state.txt
+            findstr azurerm_resource_group.rg state.txt > nul
+            if %ERRORLEVEL% NEQ 0 (
+                C:\\Users\\Samriddh\\Downloads\\terraform_1.11.3_windows_386\\terraform.exe -chdir=terraform import azurerm_resource_group.rg "/subscriptions/4a6f3be4-14cd-451b-97b0-d315131d91cd/resourceGroups/react-rg"
+            )
+        '''
+    }
+}
+
 
         stage('Terraform Plan & Apply') {
             steps {
