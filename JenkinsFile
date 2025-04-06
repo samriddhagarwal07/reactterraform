@@ -17,22 +17,22 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                bat '"%TERRAFORM_PATH%" -chdir=terraform init'
+                bat '%TERRAFORM_PATH% -chdir=terraform init'
             }
         }
-stage('Terraform Import Existing Resources') {
-  steps {
-    bat '''
-      "C:\\Users\\Samriddh\\Downloads\\terraform_1.11.3_windows_386\\terraform.exe" -chdir=terraform import azurerm_resource_group.rg "/subscriptions/4a6f3be4-14cd-451b-97b0-d315131d91cd/resourceGroups/react-rg"
-    '''
-  }
-}
 
+        stage('Terraform Import Existing Resources') {
+            steps {
+                bat '''
+                    C:\\Users\\Samriddh\\Downloads\\terraform_1.11.3_windows_386\\terraform.exe -chdir=terraform import azurerm_resource_group.rg "/subscriptions/4a6f3be4-14cd-451b-97b0-d315131d91cd/resourceGroups/react-rg"
+                '''
+            }
+        }
 
         stage('Terraform Plan & Apply') {
             steps {
-                bat '"%TERRAFORM_PATH%" -chdir=terraform plan -out=tfplan'
-                bat '"%TERRAFORM_PATH%" -chdir=terraform apply -auto-approve tfplan'
+                bat '%TERRAFORM_PATH% -chdir=terraform plan -out=tfplan'
+                bat '%TERRAFORM_PATH% -chdir=terraform apply -auto-approve tfplan'
             }
         }
 
@@ -46,9 +46,11 @@ stage('Terraform Import Existing Resources') {
         stage('Deploy to Azure') {
             steps {
                 withCredentials([azureServicePrincipal(credentialsId: AZURE_CREDENTIALS_ID)]) {
-                    bat 'az login --service-principal -u %AZURE_CLIENT_ID% -p %AZURE_CLIENT_SECRET% --tenant %AZURE_TENANT_ID%'
-                    bat 'powershell Compress-Archive -Path build/* -DestinationPath ./build.zip -Force'
-                    bat 'az webapp deploy --resource-group %RESOURCE_GROUP% --name %APP_SERVICE_NAME% --src-path ./build.zip --type zip'
+                    bat '''
+                        az login --service-principal -u %AZURE_CLIENT_ID% -p %AZURE_CLIENT_SECRET% --tenant %AZURE_TENANT_ID%
+                        powershell Compress-Archive -Path build\\* -DestinationPath build.zip -Force
+                        az webapp deploy --resource-group %RESOURCE_GROUP% --name %APP_SERVICE_NAME% --src-path build.zip --type zip
+                    '''
                 }
             }
         }
