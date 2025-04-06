@@ -20,6 +20,14 @@ pipeline {
                 bat '"%TERRAFORM_PATH%" -chdir=terraform init'
             }
         }
+stage('Terraform Import Existing Resources') {
+  steps {
+    bat '''
+      "C:\\Users\\Samriddh\\Downloads\\terraform_1.11.3_windows_386\\terraform.exe" -chdir=terraform import azurerm_resource_group.rg "/subscriptions/4a6f3be4-14cd-451b-97b0-d315131d91cd/resourceGroups/react-rg"
+    '''
+  }
+}
+
 
         stage('Terraform Plan & Apply') {
             steps {
