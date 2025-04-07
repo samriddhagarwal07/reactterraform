@@ -1,75 +1,77 @@
 pipeline {
-    agent any
+  agent any
 
-    environment {
-        AZURE_CREDENTIALS_ID = 'azure-service-principal'
-        RESOURCE_GROUP = 'react-rg'
-        APP_SERVICE_NAME = 'webapijenkins45413'
-        TERRAFORM_PATH = '"C:\\Users\\Samriddh\\Downloads\\terraform_1.11.3_windows_386\\terraform.exe"'
+  environment {
+    REACT_APP_DIR = 'my-react-app'
+    TERRAFORM_DIR = 'terraform'
+    AZURE_WEBAPP_NAME = 'webapijenkins45413'
+    AZURE_RG = 'react-rg'
+    AZURE_PLAN = 'appserviceplan'
+    TERRAFORM_PATH = '"C:\\Users\\Samriddh\\Downloads\\terraform_1.11.3_windows_386\\terraform.exe"'
+
+  }
+
+  stages {
+    stage('Install Dependencies') {
+      steps {
+        dir("${REACT_APP_DIR}") {
+          bat 'npm install'
+        }
+      }
     }
 
-    stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'master', url: 'https://github.com/samriddhagarwal07/reactterraform.git'
-            }
+    stage('Build React App') {
+      steps {
+        dir("${REACT_APP_DIR}") {
+          bat 'npm run build'
         }
-
-        stage('Terraform Init') {
-            steps {
-                bat '%TERRAFORM_PATH% -chdir=terraform init'
-            }
-        }
-
-        stage('Terraform Conditional Import') {
-    steps {
-        bat '''
-            C:\\Users\\Samriddh\\Downloads\\terraform_1.11.3_windows_386\\terraform.exe -chdir=terraform state list > state.txt
-            findstr azurerm_resource_group.rg state.txt > nul
-            if %ERRORLEVEL% NEQ 0 (
-                C:\\Users\\Samriddh\\Downloads\\terraform_1.11.3_windows_386\\terraform.exe -chdir=terraform import azurerm_resource_group.rg "/subscriptions/4a6f3be4-14cd-451b-97b0-d315131d91cd/resourceGroups/react-rg"
-            )
-        '''
+      }
     }
-}
 
-
-        stage('Terraform Plan & Apply') {
+    stage('Terraform Init') {
             steps {
-                bat '%TERRAFORM_PATH% -chdir=terraform plan -out=tfplan'
-                bat '%TERRAFORM_PATH% -chdir=terraform apply -auto-approve tfplan'
+                bat '"%TERRAFORM_PATH%" -chdir=terraform init'
             }
         }
 
-        stage('Build React App') {
+
+    stage('Terraform Apply') {
     steps {
-        dir('my-react-app') {
-            bat 'npm install'
-            bat 'npm run build'
+        dir('terraform') {
+            bat '"C:\\Users\\Samriddh\\Downloads\\terraform_1.11.3_windows_386\\terraform.exe" apply -auto-approve'
         }
     }
 }
 
 
-        stage('Deploy to Azure') {
-            steps {
-                withCredentials([azureServicePrincipal(credentialsId: AZURE_CREDENTIALS_ID)]) {
-                    bat '''
-                        az login --service-principal -u %AZURE_CLIENT_ID% -p %AZURE_CLIENT_SECRET% --tenant %AZURE_TENANT_ID%
-                        powershell Compress-Archive -Path build\\* -DestinationPath build.zip -Force
-                        az webapp deploy --resource-group %RESOURCE_GROUP% --name %APP_SERVICE_NAME% --src-path build.zip --type zip
-                    '''
-                }
-            }
+    stage('Zip Build Folder') {
+      steps {
+        dir("${REACT_APP_DIR}\\build") {
+          bat 'powershell Compress-Archive -Path * -DestinationPath ..\\build.zip -Force'
         }
+      }
     }
 
-    post {
-        success {
-            echo '✅ Deployment Successful!'
+    stage('Deploy to Azure App Service') {
+      steps {
+        dir("${REACT_APP_DIR}") {
+          bat """
+            az webapp deployment source config-zip ^
+              --resource-group %AZURE_RG% ^
+              --name %AZURE_WEBAPP_NAME% ^
+              --src build.zip
+          """
         }
-        failure {
-            echo '❌ Deployment Failed!'
-        }
+      }
     }
+  }
+
+  post {
+    success {
+      echo "✅ Deployment completed successfully!"
+    }
+    failure {
+      echo "❌ Something went wrong."
+    }
+  }
 }
